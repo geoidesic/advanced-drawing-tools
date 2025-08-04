@@ -12,7 +12,7 @@
   "version": "2.1.1",
   "compatibility": {
     "minimum": "10",
-    "verified": "12"
+    "verified": "13"
   },
   "minimumCoreVersion": "10",
   "esmodules": [

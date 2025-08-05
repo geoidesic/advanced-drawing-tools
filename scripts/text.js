@@ -74,6 +74,9 @@ Hooks.once("libWrapper.Ready", () => {
 });
 
 Hooks.on("refreshDrawing", drawing => {
+
+    console.log('drawing', drawing);
+    console.log('typeof drawing', typeof drawing);
     const text = drawing.text;
 
     if (!text) {
@@ -138,7 +141,7 @@ Hooks.on("refreshDrawing", drawing => {
         text.position.set(document.shape.width / 2, document.shape.height / 2);
     }
 
-    const arc = Math.clamped(ts?.arc ? ts.arc / 180 * Math.PI : 0, -2 * Math.PI, +2 * Math.PI);
+    const arc = Math.clamp(ts?.arc ? ts.arc / 180 * Math.PI : 0, -2 * Math.PI, +2 * Math.PI);
 
     if (arc !== 0) {
         if (drawing._warpedText?.destroyed) {

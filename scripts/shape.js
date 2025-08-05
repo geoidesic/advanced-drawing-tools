@@ -2,6 +2,9 @@ import { MODULE_ID } from "./const.js";
 import { calculateValue } from "./utils.js";
 
 Hooks.on("refreshDrawing", drawing => {
+
+    console.log('drawing', drawing);
+    console.log('typeof drawing', typeof drawing);
     if (drawing.shape.destroyed) {
         return;
     }

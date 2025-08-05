@@ -1,6 +1,9 @@
 import { MODULE_ID } from "./const.js";
 
 Hooks.on("refreshDrawing", drawing => {
+    console.log('drawing', drawing);
+    console.log('typeof drawing', typeof drawing);
+
     drawing._refreshEditMode();
 });
 
@@ -27,7 +30,7 @@ Hooks.once("libWrapper.Ready", () => {
         : (drawing, event) => drawing._dragHandle;
 
     if (!foundry.utils.isNewerVersion(game.version, 12)) {
-        libWrapper.register(MODULE_ID, "Drawing.prototype.activateListeners", function (wrapped, ...args) {
+        libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Drawing.prototype.activateListeners", function (wrapped, ...args) {
             wrapped(...args);
 
             const pointerup = foundry.utils.isNewerVersion(game.version, 11) ? "pointerup" : "mouseup";
@@ -36,7 +39,7 @@ Hooks.once("libWrapper.Ready", () => {
         }, libWrapper.WRAPPER);
     }
 
-    libWrapper.register(MODULE_ID, "Drawing.prototype._onHandleHoverIn", function (event) {
+    libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Drawing.prototype._onHandleHoverIn", function (event) {
         if (this._dragHandle) {
             return;
         }
@@ -56,7 +59,7 @@ Hooks.once("libWrapper.Ready", () => {
         }
     }, libWrapper.OVERRIDE);
 
-    libWrapper.register(MODULE_ID, "Drawing.prototype._onHandleHoverOut", function (event) {
+    libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Drawing.prototype._onHandleHoverOut", function (event) {
         const handle = getInteractionData(event).handle;
 
         if (handle instanceof PointHandle || handle instanceof EdgeHandle) {
@@ -68,7 +71,7 @@ Hooks.once("libWrapper.Ready", () => {
     }, libWrapper.OVERRIDE);
 
     if (!foundry.utils.isNewerVersion(game.version, 12)) {
-        libWrapper.register(MODULE_ID, "Drawing.prototype._onHandleMouseDown", function (event) {
+        libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Drawing.prototype._onHandleMouseDown", function (event) {
             const handle = event.target;
 
             if (handle instanceof PointHandle || handle instanceof EdgeHandle) {
@@ -88,7 +91,7 @@ Hooks.once("libWrapper.Ready", () => {
         }, libWrapper.OVERRIDE);
     }
 
-    libWrapper.register(MODULE_ID, "Drawing.prototype._onDragLeftStart", function (wrapped, event) {
+    libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Drawing.prototype._onDragLeftStart", function (wrapped, event) {
         if (!isDraggingHandle(this, event)) {
             return wrapped(event);
         }
@@ -125,7 +128,7 @@ Hooks.once("libWrapper.Ready", () => {
         }
     }, libWrapper.MIXED);
 
-    libWrapper.register(MODULE_ID, "Drawing.prototype._onHandleDragMove", function (event) {
+    libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Drawing.prototype._onHandleDragMove", function (event) {
         let { handle, destination, origin } = getInteractionData(event);
 
         if (this._editHandle) {
@@ -176,7 +179,7 @@ Hooks.once("libWrapper.Ready", () => {
         } catch (err) { }
     }, libWrapper.OVERRIDE);
 
-    libWrapper.register(MODULE_ID, "Drawing.prototype._onHandleDragDrop", function (event) {
+    libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Drawing.prototype._onHandleDragDrop", function (event) {
         let { handle, destination, origin } = getInteractionData(event);
 
         if (this._editHandle) {
@@ -233,7 +236,7 @@ Hooks.once("libWrapper.Ready", () => {
     }, libWrapper.OVERRIDE);
 
     if (foundry.utils.isNewerVersion(game.version, 12)) {
-        libWrapper.register(MODULE_ID, "Drawing.prototype._onClickLeft", function (wrapped, event) {
+        libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Drawing.prototype._onClickLeft", function (wrapped, event) {
             this._editHandle = null;
 
             if (this._editHandles?.points.children.includes(event.target)
@@ -248,7 +251,7 @@ Hooks.once("libWrapper.Ready", () => {
         }, libWrapper.MIXED);
     }
 
-    libWrapper.register(MODULE_ID, "Drawing.prototype._onClickRight", function (wrapped, event) {
+    libWrapper.register(MODULE_ID, "foundry.canvas.placeables.Drawing.prototype._onClickRight", function (wrapped, event) {
         let handle = getInteractionData(event).handle;
 
         if (this._editHandle) {
@@ -289,7 +292,7 @@ Hooks.once("libWrapper.Ready", () => {
     }, libWrapper.MIXED);
 
     if (!foundry.utils.isNewerVersion(game.version, 12)) {
-        Drawing.prototype._onHandleMouseUp = function (event) {
+        foundry.canvas.placeables.Drawing.prototype._onHandleMouseUp = function (event) {
             if (!getOriginalData(this, event)) {
                 this._dragHandle = false;
                 this._editHandle = null;
@@ -298,9 +301,9 @@ Hooks.once("libWrapper.Ready", () => {
     }
 });
 
-Drawing.prototype._editMode = false;
+foundry.canvas.placeables.Drawing.prototype._editMode = false;
 
-Drawing.prototype._toggleEditMode = function (active) {
+foundry.canvas.placeables.Drawing.prototype._toggleEditMode = function (active) {
     this.layer.placeables.forEach(drawing => {
         if (drawing !== this && drawing._editMode) {
             drawing._editMode = false;
@@ -320,9 +323,9 @@ Drawing.prototype._toggleEditMode = function (active) {
     }
 };
 
-Drawing.prototype._editHandles = null;
+foundry.canvas.placeables.Drawing.prototype._editHandles = null;
 
-Drawing.prototype._refreshEditMode = function () {
+foundry.canvas.placeables.Drawing.prototype._refreshEditMode = function () {
     const document = this.document;
 
     if (this._editMode && this.layer.active && !document._source.locked && document.shape.type === "p") {

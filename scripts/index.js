@@ -26,8 +26,8 @@ Hooks.once("libWrapper.Ready", () => {
         libWrapper.ignore_conflicts(MODULE_ID, "precise-drawing-tools", "DrawingsLayer.prototype.gridPrecision");
     }
 
-    if (!foundry.utils.isNewerVersion(game.version, 11)) {
-        libWrapper.register(MODULE_ID, "Drawing.prototype._rescaleDimensions", function (original, dx, dy) {
+    if (game.version < 12) {
+        libWrapper.register(MODULE_ID, "foundry.canvas.containers.Drawing.prototype._rescaleDimensions", function (original, dx, dy) {
             let { points, width, height } = original.shape;
             width += dx;
             height += dy;
@@ -47,9 +47,13 @@ Hooks.once("libWrapper.Ready", () => {
                 shape: { width: Math.roundFast(width), height: Math.roundFast(height), points }
             });
         }, libWrapper.OVERRIDE);
-    } else {
-        Drawing.prototype._rescaleDimensions = function (original, dx, dy) {
-            return Drawing.rescaleDimensions(original, dx, dy);
+    } else if (game.version < 13) {
+        foundry.canvas.containers.Drawing.prototype._rescaleDimensions = function (original, dx, dy) {
+            return foundry.canvas.containers.Drawing.rescaleDimensions(original, dx, dy);
+        };
+    } else if (game.version >= 13) {
+        foundry.canvas.placeables.Drawing.prototype._rescaleDimensions = function (original, dx, dy) {
+            return foundry.canvas.placeables.Drawing.rescaleDimensions(original, dx, dy);
         };
     }
 });

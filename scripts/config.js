@@ -21,7 +21,6 @@ Hooks.once("ready", (app) => {
 });
 
 Hooks.once("libWrapper.Ready", () => {
-    console.log('foundry.applications.sheets.DrawingConfig.prototype', foundry.applications.sheets.DrawingConfig.prototype);
     libWrapper.register(MODULE_ID, "foundry.applications.sheets.DrawingConfig.prototype._processSubmitData", async function (wrapped, event, form, submitData, options) {
         // Mutate submitData in place as per v13+ API
         if (this.form.querySelector(`input[class=\"${MODULE_ID}--lineStyle-dash\"]`).checked) {
@@ -81,6 +80,9 @@ Hooks.once("libWrapper.Ready", () => {
 });
 
 Hooks.on("renderDrawingConfig", (app, html) => {
+    const windowContent = html.querySelector('.window-content');
+    windowContent.style.height = '100%';
+    windowContent.style['overflow-y'] = 'auto';
     const document = app.document;
     const ls = document.getFlag(MODULE_ID, "lineStyle") ?? {};
     const fs = document.getFlag(MODULE_ID, "fillStyle") ?? {};
@@ -398,11 +400,10 @@ Hooks.on("renderDrawingConfig", (app, html) => {
 
     updateDropShadowBlurPlaceholder();
 
+
     html.querySelector(`range-picker[name="fontSize"]`).addEventListener("change", event => updateDropShadowBlurPlaceholder(event));
 
-    app.options.height = "auto";
-    app.position.height = "auto";
-    app.setPosition(app.position);
+    app.setPosition({ height: "auto" });
 
 
 

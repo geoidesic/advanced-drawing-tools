@@ -13,8 +13,8 @@ Hooks.on("renderDrawingHUD", (hud, html) => {
     edit.dataset.action = `${MODULE_ID}.edit`;
     edit.innerHTML = `<i class="fas fa-draw-polygon"></i>`;
 
-    html.find(".col.left").append(edit);
-    html.find(`.control-icon[data-action="${MODULE_ID}.edit"]`).click(async event => {
+    html.querySelector(".col.left").append(edit);
+    html.querySelector(`.control-icon[data-action="${MODULE_ID}.edit"]`).click(async event => {
         await unlockDrawing(hud);
 
         const drawing = hud.object;
@@ -39,8 +39,8 @@ Hooks.on("renderDrawingHUD", (hud, html) => {
         flipH.dataset.action = `${MODULE_ID}.flip-h`;
         flipH.innerHTML = `<i class="fas fa-arrows-alt-h"></i>`;
 
-        html.find(".col.left").append(flipH);
-        html.find(`.control-icon[data-action="${MODULE_ID}.flip-h"]`).click(async event => {
+        html.querySelector(".col.left").append(flipH);
+        html.querySelector(`.control-icon[data-action="${MODULE_ID}.flip-h"]`).click(async event => {
             await unlockDrawing(hud);
 
             if (hud.object.document.locked) {
@@ -65,8 +65,8 @@ Hooks.on("renderDrawingHUD", (hud, html) => {
         flipV.dataset.action = `${MODULE_ID}.flip-v`;
         flipV.innerHTML = `<i class="fas fa-arrows-alt-v"></i>`;
 
-        html.find(".col.left").append(flipV);
-        html.find(`.control-icon[data-action="${MODULE_ID}.flip-v"]`).click(async event => {
+        html.querySelector(".col.left").append(flipV);
+        html.querySelector(`.control-icon[data-action="${MODULE_ID}.flip-v"]`).click(async event => {
             await unlockDrawing(hud);
 
             if (hud.object.document.locked) {

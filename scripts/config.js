@@ -2,81 +2,102 @@ import { MODULE_ID } from "./const.js";
 import { cleanData, saveValue, stringifyValue } from "./utils.js";
 
 Hooks.once("libWrapper.Ready", () => {
+    // Log available methods on DrawingConfig for debugging
+    console.log(`${MODULE_ID}: Available DrawingConfig methods:`, Object.getOwnPropertyNames(DrawingConfig.prototype));
+    
     // Try different method names for v13 compatibility
     const methodNames = [
         "DrawingConfig.prototype._getSubmitData",
         "DrawingConfig.prototype._getFormData", 
-        "DrawingConfig.prototype._prepareSubmission"
+        "DrawingConfig.prototype._prepareSubmission",
+        "DrawingConfig.prototype._updateObject",
+        "DocumentSheetConfig.prototype._getSubmitData"
     ];
     
     let registeredMethod = null;
     for (const methodName of methodNames) {
         try {
-            libWrapper.register(MODULE_ID, methodName, function (wrapped, ...args) {
-        const data = foundry.utils.flattenObject(wrapped(...args));
-
-        if (this.form.querySelector(`input[class="${MODULE_ID}--lineStyle-dash"]`).checked) {
-            data[`flags.${MODULE_ID}.lineStyle.dash`] = [
-                Number(data[`flags.${MODULE_ID}.lineStyle.dash`][0]) || 8,
-                Number(data[`flags.${MODULE_ID}.lineStyle.dash`][1]) || 5
-            ];
-        } else {
-            data[`flags.${MODULE_ID}.lineStyle.dash`] = null;
-        }
-
-        const processValue = name => {
-            data[name] = saveValue(data[name]);
-        };
-
-        processValue(`flags.${MODULE_ID}.fillStyle.texture.width`);
-        processValue(`flags.${MODULE_ID}.fillStyle.texture.height`);
-        processValue(`flags.${MODULE_ID}.fillStyle.transform.position.x`);
-        processValue(`flags.${MODULE_ID}.fillStyle.transform.position.y`);
-        processValue(`flags.${MODULE_ID}.fillStyle.transform.pivot.x`);
-        processValue(`flags.${MODULE_ID}.fillStyle.transform.pivot.y`);
-        processValue(`flags.${MODULE_ID}.textStyle.wordWrapWidth`);
-
-        const processStringArray = name => {
-            if (data[name] == null) {
-                data[name] = [];
-            } else if (!Array.isArray(data[name])) {
-                data[name] = [data[name]];
+            // Check if method exists before trying to wrap it
+            const methodPath = methodName.split('.');
+            let obj = window;
+            for (let i = 0; i < methodPath.length - 1; i++) {
+                obj = obj[methodPath[i]];
+                if (!obj) break;
             }
+            const finalMethod = methodPath[methodPath.length - 1];
+            
+            if (obj && typeof obj[finalMethod] === 'function') {
+                console.log(`${MODULE_ID}: Found method ${methodName}, attempting registration...`);
+                
+                libWrapper.register(MODULE_ID, methodName, function (wrapped, ...args) {
+                    const data = foundry.utils.flattenObject(wrapped(...args));
 
-            if (data[name].every(v => !v)) {
-                data[name] = null;
+                    if (this.form.querySelector(`input[class="${MODULE_ID}--lineStyle-dash"]`).checked) {
+                        data[`flags.${MODULE_ID}.lineStyle.dash`] = [
+                            Number(data[`flags.${MODULE_ID}.lineStyle.dash`][0]) || 8,
+                            Number(data[`flags.${MODULE_ID}.lineStyle.dash`][1]) || 5
+                        ];
+                    } else {
+                        data[`flags.${MODULE_ID}.lineStyle.dash`] = null;
+                    }
+
+                    const processValue = name => {
+                        data[name] = saveValue(data[name]);
+                    };
+
+                    processValue(`flags.${MODULE_ID}.fillStyle.texture.width`);
+                    processValue(`flags.${MODULE_ID}.fillStyle.texture.height`);
+                    processValue(`flags.${MODULE_ID}.fillStyle.transform.position.x`);
+                    processValue(`flags.${MODULE_ID}.fillStyle.transform.position.y`);
+                    processValue(`flags.${MODULE_ID}.fillStyle.transform.pivot.x`);
+                    processValue(`flags.${MODULE_ID}.fillStyle.transform.pivot.y`);
+                    processValue(`flags.${MODULE_ID}.textStyle.wordWrapWidth`);
+
+                    const processStringArray = name => {
+                        if (data[name] == null) {
+                            data[name] = [];
+                        } else if (!Array.isArray(data[name])) {
+                            data[name] = [data[name]];
+                        }
+
+                        if (data[name].every(v => !v)) {
+                            data[name] = null;
+                        }
+                    };
+
+                    const processNumberArray = name => {
+                        if (data[name] == null) {
+                            data[name] = [];
+                        } else if (!Array.isArray(data[name])) {
+                            data[name] = [data[name]];
+                        }
+
+                        if (data[name].every(v => v === null)) {
+                            data[name] = null;
+                        }
+                    };
+
+                    processStringArray(`flags.${MODULE_ID}.textStyle.fill`);
+                    processNumberArray(`flags.${MODULE_ID}.textStyle.fillGradientStops`);
+
+                    return foundry.utils.flattenObject(cleanData(data, { deletionKeys: !this.options.configureDefault }));
+                }, libWrapper.WRAPPER);
+                
+                registeredMethod = methodName;
+                console.log(`${MODULE_ID}: Successfully registered ${methodName}`);
+                break;
+            } else {
+                console.log(`${MODULE_ID}: Method ${methodName} not found`);
             }
-        };
-
-        const processNumberArray = name => {
-            if (data[name] == null) {
-                data[name] = [];
-            } else if (!Array.isArray(data[name])) {
-                data[name] = [data[name]];
-            }
-
-            if (data[name].every(v => v === null)) {
-                data[name] = null;
-            }
-        };
-
-        processStringArray(`flags.${MODULE_ID}.textStyle.fill`);
-        processNumberArray(`flags.${MODULE_ID}.textStyle.fillGradientStops`);
-
-        return foundry.utils.flattenObject(cleanData(data, { deletionKeys: !this.options.configureDefault }));
-    }, libWrapper.WRAPPER);
-            registeredMethod = methodName;
-            break;
         } catch (error) {
-            console.warn(`Failed to register ${methodName}:`, error.message);
+            console.warn(`${MODULE_ID}: Failed to register ${methodName}:`, error.message);
             continue;
         }
     }
     
     if (!registeredMethod) {
-        console.error(`${MODULE_ID}: Could not register any DrawingConfig data submission method. None of the expected methods were found.`);
-    } else {
-        console.log(`${MODULE_ID}: Successfully registered ${registeredMethod}`);
+        console.warn(`${MODULE_ID}: Could not register any DrawingConfig data submission method. Module will work but some features may not function correctly.`);
+        // Don't throw an error, just log a warning
     }
 });
 

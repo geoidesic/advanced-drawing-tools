@@ -2,7 +2,17 @@ import { MODULE_ID } from "./const.js";
 import { cleanData, saveValue, stringifyValue } from "./utils.js";
 
 Hooks.once("libWrapper.Ready", () => {
-    libWrapper.register(MODULE_ID, "DrawingConfig.prototype._getSubmitData", function (wrapped, ...args) {
+    // Try different method names for v13 compatibility
+    const methodNames = [
+        "DrawingConfig.prototype._getSubmitData",
+        "DrawingConfig.prototype._getFormData", 
+        "DrawingConfig.prototype._prepareSubmission"
+    ];
+    
+    let registeredMethod = null;
+    for (const methodName of methodNames) {
+        try {
+            libWrapper.register(MODULE_ID, methodName, function (wrapped, ...args) {
         const data = foundry.utils.flattenObject(wrapped(...args));
 
         if (this.form.querySelector(`input[class="${MODULE_ID}--lineStyle-dash"]`).checked) {
@@ -55,6 +65,19 @@ Hooks.once("libWrapper.Ready", () => {
 
         return foundry.utils.flattenObject(cleanData(data, { deletionKeys: !this.options.configureDefault }));
     }, libWrapper.WRAPPER);
+            registeredMethod = methodName;
+            break;
+        } catch (error) {
+            console.warn(`Failed to register ${methodName}:`, error.message);
+            continue;
+        }
+    }
+    
+    if (!registeredMethod) {
+        console.error(`${MODULE_ID}: Could not register any DrawingConfig data submission method. None of the expected methods were found.`);
+    } else {
+        console.log(`${MODULE_ID}: Successfully registered ${registeredMethod}`);
+    }
 });
 
 Hooks.on("renderDrawingConfig", (app, html) => {

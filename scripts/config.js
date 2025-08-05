@@ -186,7 +186,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.querySelector(`input[name="fontSize"]`).closest(".form-group").insertAdjacentHTML('afterend', `
+    html.querySelector(`range-picker[name="fontSize"]`).closest(".form-group").insertAdjacentHTML('afterend', `
         <div class="form-group">
             <label>Leading <span class="units">(Pixels)</span></label>
             <input type="number" name="flags.${MODULE_ID}.textStyle.leading" min="0" step="0.1" placeholder="0" value="${ts.leading ?? "0"}">
@@ -201,7 +201,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.querySelector(`input[name="textColor"]`).closest(".form-fields").insertAdjacentHTML('beforeend', `
+    html.querySelector(`color-picker[name="textColor"]`).closest(".form-fields").insertAdjacentHTML('beforeend', `
         &nbsp;
         <input type="number" name="flags.${MODULE_ID}.textStyle.fillGradientStops" min="0" max="1" step="0.001" placeholder="" title="Color Stop" value="${ts?.fillGradientStops?.[0] ?? ""}">
         &nbsp;
@@ -209,14 +209,14 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         <a title="Remove Color" class="${MODULE_ID}--textStyle-fill--remove" style="flex: 0;"><i class="fas fa-minus fa-fw" style="margin: 0;"></i></a>
     `);
     html.querySelector(`a[class="${MODULE_ID}--textStyle-fill--add"]`).click(event => {
-        html.querySelector(`input[name="textColor"]`).closest(".form-group").after(createTextColor(
-            html.querySelector(`input[name="textColor"]`).val(),
+        html.querySelector(`color-picker[name="textColor"]`).closest(".form-group").after(createTextColor(
+            html.querySelector(`color-picker[name="textColor"]`).val(),
             html.querySelector(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).eq(0).val()
         ));
         app.setPosition(app.position);
     });
     html.querySelector(`a[class="${MODULE_ID}--textStyle-fill--remove"]`).click(event => {
-        html.querySelector(`input[name="textColor"],input[data-edit="textColor"]`).val(
+        html.querySelector(`color-picker[name="textColor"],input[data-edit="textColor"]`).val(
             html.querySelector(`input[name="flags.${MODULE_ID}.textStyle.fill"]`).eq(0).val() || "#ffffff"
         );
         html.querySelector(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).eq(0).val(
@@ -264,13 +264,13 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         const fill = Array.isArray(ts.fill) ? ts.fill : [ts.fill];
 
         for (let i = fill.length - 1; i >= 0; i--) {
-            html.querySelector(`input[name="textColor"]`).closest(".form-group").after(
+            html.querySelector(`color-picker[name="textColor"]`).closest(".form-group").after(
                 createTextColor(fill[i], ts?.fillGradientStops?.[i + 1])
             );
         }
     }
 
-    html.querySelector(`input[name="textAlpha"]`).closest(".form-group").insertAdjacentHTML('beforebegin', `
+    html.querySelector(`range-picker[name="textAlpha"]`).closest(".form-group").insertAdjacentHTML('beforebegin', `
         <div class="form-group">
             <label>Text Color Gradient</label>
             <select name="flags.${MODULE_ID}.textStyle.fillGradientType" data-dtype="Number">
@@ -280,7 +280,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.querySelector(`input[name="textAlpha"]`).closest(".form-group").insertAdjacentHTML('afterend', `
+    html.querySelector(`range-picker[name="textAlpha"]`).closest(".form-group").insertAdjacentHTML('afterend', `
         <div class="form-group">
             <label>Text Alignment</label>
             <select name="flags.${MODULE_ID}.textStyle.align">
@@ -343,7 +343,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         if (event?.target.type === "color") {
             textColor = html.querySelector(`input[data-edit="textColor"]`).val();
         } else {
-            textColor = html.querySelector(`input[name="textColor"]`).val();
+            textColor = html.querySelector(`color-picker[name="textColor"]`).val();
         }
 
         const strokeColor = Color.from(textColor || "#ffffff").hsv[2] > 0.6 ? "#000000" : "#ffffff";
@@ -354,10 +354,10 @@ Hooks.on("renderDrawingConfig", (app, html) => {
 
     updateStrokeColorPlaceholder();
 
-    html.querySelector(`input[name="textColor"],input[data-edit="textColor"]`).change(event => updateStrokeColorPlaceholder(event));
+    html.querySelector(`color-picker[name="textColor"],input[data-edit="textColor"]`).change(event => updateStrokeColorPlaceholder(event));
 
     const updateStrokeThicknessPlaceholder = () => {
-        const fontSize = html.querySelector(`input[name="fontSize"]`).val();
+        const fontSize = html.querySelector(`range-picker[name="fontSize"]`).val();
 
         html.querySelector(`input[name="flags.advanced-drawing-tools.textStyle.strokeThickness"]`).attr(
             "placeholder",
@@ -367,10 +367,10 @@ Hooks.on("renderDrawingConfig", (app, html) => {
 
     updateStrokeThicknessPlaceholder();
 
-    html.querySelector(`input[name="fontSize"]`).change(event => updateStrokeThicknessPlaceholder(event));
+    html.querySelector(`range-picker[name="fontSize"]`).change(event => updateStrokeThicknessPlaceholder(event));
 
     const updateDropShadowBlurPlaceholder = () => {
-        const fontSize = html.querySelector(`input[name="fontSize"]`).val();
+        const fontSize = html.querySelector(`range-picker[name="fontSize"]`).val();
 
         html.querySelector(`input[name="flags.advanced-drawing-tools.textStyle.dropShadowBlur"]`).attr(
             "placeholder",
@@ -380,7 +380,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
 
     updateDropShadowBlurPlaceholder();
 
-    html.querySelector(`input[name="fontSize"]`).change(event => updateDropShadowBlurPlaceholder(event));
+    html.querySelector(`range-picker[name="fontSize"]`).change(event => updateDropShadowBlurPlaceholder(event));
 
     app.options.height = "auto";
     app.position.height = "auto";

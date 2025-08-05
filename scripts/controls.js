@@ -6,30 +6,66 @@ Hooks.on("getSceneControlButtons", controls => {
     console.log(`${MODULE_ID}: controls is array:`, Array.isArray(controls));
     console.log(`${MODULE_ID}: controls has jquery:`, !!(controls && controls.jquery));
     console.log(`${MODULE_ID}: controls has find method:`, !!(controls && typeof controls.find === 'function'));
+    console.log(`${MODULE_ID}: controls has length:`, controls && controls.length);
+    console.log(`${MODULE_ID}: controls constructor:`, controls && controls.constructor && controls.constructor.name);
+    console.log(`${MODULE_ID}: controls keys:`, controls && Object.keys(controls));
     console.log(`${MODULE_ID}: controls:`, controls);
     
     // Handle different formats of controls parameter
     let drawingsControl;
     
     try {
+        // First, let's try to convert whatever we have into a workable array
+        let controlsArray = [];
+        
         if (Array.isArray(controls)) {
-            // v13: controls is a regular array
             console.log(`${MODULE_ID}: Processing as array`);
-            drawingsControl = controls.find(c => c && c.name === "drawings");
+            controlsArray = controls;
         } else if (controls && controls.jquery) {
-            // v12: controls is a jQuery object - need to convert to array first
             console.log(`${MODULE_ID}: Processing as jQuery object`);
-            const controlsArray = controls.toArray();
-            drawingsControl = controlsArray.find(c => c && c.name === "drawings");
-        } else if (controls && controls.length !== undefined) {
-            // Try to treat as array-like object
-            console.log(`${MODULE_ID}: Processing as array-like object`);
-            const controlsArray = Array.from(controls);
-            drawingsControl = controlsArray.find(c => c && c.name === "drawings");
-        } else {
-            console.error(`${MODULE_ID}: Unknown controls format, skipping hook`);
+            controlsArray = controls.toArray();
+        } else if (controls && typeof controls.length === 'number' && controls.length > 0) {
+            console.log(`${MODULE_ID}: Processing as array-like object with length ${controls.length}`);
+            // Try multiple methods to convert to array
+            try {
+                controlsArray = Array.from(controls);
+            } catch (e1) {
+                try {
+                    controlsArray = [...controls];
+                } catch (e2) {
+                    try {
+                        controlsArray = Array.prototype.slice.call(controls);
+                    } catch (e3) {
+                        console.log(`${MODULE_ID}: All array conversion methods failed, trying manual iteration`);
+                        for (let i = 0; i < controls.length; i++) {
+                            if (controls[i] !== undefined) {
+                                controlsArray.push(controls[i]);
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (controls && typeof controls === 'object') {
+            console.log(`${MODULE_ID}: Processing as generic object, trying to extract array-like properties`);
+            // Maybe it's an object with numeric keys?
+            const keys = Object.keys(controls);
+            const numericKeys = keys.filter(k => !isNaN(k)).sort((a, b) => a - b);
+            if (numericKeys.length > 0) {
+                controlsArray = numericKeys.map(k => controls[k]);
+            }
+        }
+        
+        console.log(`${MODULE_ID}: Converted to array with length:`, controlsArray.length);
+        console.log(`${MODULE_ID}: controlsArray:`, controlsArray);
+        
+        if (controlsArray.length === 0) {
+            console.error(`${MODULE_ID}: No controls found after conversion, skipping hook`);
             return;
         }
+        
+        // Now look for the drawings control
+        drawingsControl = controlsArray.find(c => c && c.name === "drawings");
+        
     } catch (error) {
         console.error(`${MODULE_ID}: Error processing controls:`, error);
         return;

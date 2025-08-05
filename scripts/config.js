@@ -67,7 +67,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
     const fs = document.getFlag(MODULE_ID, "fillStyle") ?? {};
     const ts = document.getFlag(MODULE_ID, "textStyle") ?? {};
 
-    html.querySelector(`.tab[data-tab="position"]`).append(`
+    html.querySelector(`.tab[data-tab="position"]`).insertAdjacentHTML('beforeend', `
         <div class="form-group">
             <label>Invisible</label>
             <div class="form-fields">
@@ -77,25 +77,28 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.querySelector(`input[name="text"]`).replaceWith(`
+    html.querySelector(`input[name="text"]`).outerHTML = `
         <textarea name="text" style="font-family: var(--font-primary); min-height: calc(var(--form-field-height) + 3px); height: 0; border-color: var(--color-border-light-tertiary);">${document.text ?? ""}</textarea>
-    `);
+    `;
 
-    html.querySelector(`input[name="strokeWidth"]`).closest(".form-group").after(`
-        <div class="form-group">
-            <label>Dashed <span class="units">(Pixels)</span></label>
-            <div class="form-fields">
-                <label>Dash</label>
-                <input type="number" name="flags.${MODULE_ID}.lineStyle.dash" min="0.1" step="0.1" placeholder="8" value="${ls.dash?.[0] ?? "8"}">
-                <label>Gap</label>
-                <input type="number" name="flags.${MODULE_ID}.lineStyle.dash" min="0.1" step="0.1" placeholder="5" value="${ls.dash?.[1] ?? "5"}">
-                &nbsp;&nbsp;&nbsp;
-                <input type="checkbox" class="${MODULE_ID}--lineStyle-dash" ${ls.dash ? "checked" : ""}>
+    const strokeWidthGroup = html.querySelector(`input[name="strokeWidth"]`)?.closest(".form-group");
+    if (strokeWidthGroup) {
+        strokeWidthGroup.insertAdjacentHTML('afterend', `
+            <div class="form-group">
+                <label>Dashed <span class="units">(Pixels)</span></label>
+                <div class="form-fields">
+                    <label>Dash</label>
+                    <input type="number" name="flags.${MODULE_ID}.lineStyle.dash" min="0.1" step="0.1" placeholder="8" value="${ls.dash?.[0] ?? "8"}">
+                    <label>Gap</label>
+                    <input type="number" name="flags.${MODULE_ID}.lineStyle.dash" min="0.1" step="0.1" placeholder="5" value="${ls.dash?.[1] ?? "5"}">
+                    &nbsp;&nbsp;&nbsp;
+                    <input type="checkbox" class="${MODULE_ID}--lineStyle-dash" ${ls.dash ? "checked" : ""}>
+                </div>
             </div>
-        </div>
-    `);
+        `);
+    }
 
-    html.querySelector(`div[data-tab="fill"]`).append(`
+    html.querySelector(`div[data-tab="fill"]`).insertAdjacentHTML('beforeend', `
         <div class="form-group">
             <label>Texture Size <span class="units">(Pixels or %)</span></label>
             <div class="form-fields">
@@ -147,7 +150,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.querySelector(`select[name="fontFamily"]`).closest(".form-group").after(`
+    html.querySelector(`select[name="fontFamily"]`).closest(".form-group").insertAdjacentHTML('afterend', `
         <div class="form-group">
             <label>Font Style</label>
             <select name="flags.${MODULE_ID}.textStyle.fontStyle">
@@ -183,7 +186,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.querySelector(`input[name="fontSize"]`).closest(".form-group").after(`
+    html.querySelector(`input[name="fontSize"]`).closest(".form-group").insertAdjacentHTML('afterend', `
         <div class="form-group">
             <label>Leading <span class="units">(Pixels)</span></label>
             <input type="number" name="flags.${MODULE_ID}.textStyle.leading" min="0" step="0.1" placeholder="0" value="${ts.leading ?? "0"}">
@@ -198,7 +201,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.querySelector(`input[name="textColor"]`).closest(".form-fields").append(`
+    html.querySelector(`input[name="textColor"]`).closest(".form-fields").insertAdjacentHTML('beforeend', `
         &nbsp;
         <input type="number" name="flags.${MODULE_ID}.textStyle.fillGradientStops" min="0" max="1" step="0.001" placeholder="" title="Color Stop" value="${ts?.fillGradientStops?.[0] ?? ""}">
         &nbsp;
@@ -267,7 +270,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         }
     }
 
-    html.querySelector(`input[name="textAlpha"]`).closest(".form-group").before(`
+    html.querySelector(`input[name="textAlpha"]`).closest(".form-group").insertAdjacentHTML('beforebegin', `
         <div class="form-group">
             <label>Text Color Gradient</label>
             <select name="flags.${MODULE_ID}.textStyle.fillGradientType" data-dtype="Number">
@@ -277,7 +280,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.querySelector(`input[name="textAlpha"]`).closest(".form-group").after(`
+    html.querySelector(`input[name="textAlpha"]`).closest(".form-group").insertAdjacentHTML('afterend', `
         <div class="form-group">
             <label>Text Alignment</label>
             <select name="flags.${MODULE_ID}.textStyle.align">

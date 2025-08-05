@@ -1,6 +1,9 @@
 import { MODULE_ID, MODULE_NAME } from "./const.js";
 
 Hooks.on("renderDrawingHUD", (hud, html) => {
+    // Helper function to handle jQuery-like operations on vanilla DOM
+    const element = html.jquery ? html[0] : html;
+    
     const edit = document.createElement("div");
 
     edit.classList.add("control-icon");
@@ -13,8 +16,8 @@ Hooks.on("renderDrawingHUD", (hud, html) => {
     edit.dataset.action = `${MODULE_ID}.edit`;
     edit.innerHTML = `<i class="fas fa-draw-polygon"></i>`;
 
-    html.find(".col.left").append(edit);
-    html.find(`.control-icon[data-action="${MODULE_ID}.edit"]`).click(async event => {
+    element.querySelector(".col.left").appendChild(edit);
+    element.querySelector(`.control-icon[data-action="${MODULE_ID}.edit"]`).addEventListener('click', async event => {
         await unlockDrawing(hud);
 
         const drawing = hud.object;
@@ -39,8 +42,8 @@ Hooks.on("renderDrawingHUD", (hud, html) => {
         flipH.dataset.action = `${MODULE_ID}.flip-h`;
         flipH.innerHTML = `<i class="fas fa-arrows-alt-h"></i>`;
 
-        html.find(".col.left").append(flipH);
-        html.find(`.control-icon[data-action="${MODULE_ID}.flip-h"]`).click(async event => {
+        element.querySelector(".col.left").appendChild(flipH);
+        element.querySelector(`.control-icon[data-action="${MODULE_ID}.flip-h"]`).addEventListener('click', async event => {
             await unlockDrawing(hud);
 
             if (hud.object.document.locked) {
@@ -65,8 +68,8 @@ Hooks.on("renderDrawingHUD", (hud, html) => {
         flipV.dataset.action = `${MODULE_ID}.flip-v`;
         flipV.innerHTML = `<i class="fas fa-arrows-alt-v"></i>`;
 
-        html.find(".col.left").append(flipV);
-        html.find(`.control-icon[data-action="${MODULE_ID}.flip-v"]`).click(async event => {
+        element.querySelector(".col.left").appendChild(flipV);
+        element.querySelector(`.control-icon[data-action="${MODULE_ID}.flip-v"]`).addEventListener('click', async event => {
             await unlockDrawing(hud);
 
             if (hud.object.document.locked) {

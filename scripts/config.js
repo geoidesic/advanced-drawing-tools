@@ -2,59 +2,103 @@ import { MODULE_ID } from "./const.js";
 import { cleanData, saveValue, stringifyValue } from "./utils.js";
 
 Hooks.once("libWrapper.Ready", () => {
-    libWrapper.register(MODULE_ID, "DrawingConfig.prototype._getSubmitData", function (wrapped, ...args) {
-        const data = foundry.utils.flattenObject(wrapped(...args));
+    // Log available methods on DrawingConfig for debugging
+    console.log(`${MODULE_ID}: Available DrawingConfig methods:`, Object.getOwnPropertyNames(DrawingConfig.prototype));
+    
+    // Try different method names for v13 compatibility
+    const methodNames = [
+        "DrawingConfig.prototype._getSubmitData",
+        "DrawingConfig.prototype._getFormData", 
+        "DrawingConfig.prototype._prepareSubmission",
+        "DrawingConfig.prototype._updateObject",
+        "DocumentSheetConfig.prototype._getSubmitData"
+    ];
+    
+    let registeredMethod = null;
+    for (const methodName of methodNames) {
+        try {
+            // Check if method exists before trying to wrap it
+            const methodPath = methodName.split('.');
+            let obj = window;
+            for (let i = 0; i < methodPath.length - 1; i++) {
+                obj = obj[methodPath[i]];
+                if (!obj) break;
+            }
+            const finalMethod = methodPath[methodPath.length - 1];
+            
+            if (obj && typeof obj[finalMethod] === 'function') {
+                console.log(`${MODULE_ID}: Found method ${methodName}, attempting registration...`);
+                
+                libWrapper.register(MODULE_ID, methodName, function (wrapped, ...args) {
+                    const data = foundry.utils.flattenObject(wrapped(...args));
 
-        if (this.form.querySelector(`input[class="${MODULE_ID}--lineStyle-dash"]`).checked) {
-            data[`flags.${MODULE_ID}.lineStyle.dash`] = [
-                Number(data[`flags.${MODULE_ID}.lineStyle.dash`][0]) || 8,
-                Number(data[`flags.${MODULE_ID}.lineStyle.dash`][1]) || 5
-            ];
-        } else {
-            data[`flags.${MODULE_ID}.lineStyle.dash`] = null;
+                    if (this.form.querySelector(`input[class="${MODULE_ID}--lineStyle-dash"]`).checked) {
+                        data[`flags.${MODULE_ID}.lineStyle.dash`] = [
+                            Number(data[`flags.${MODULE_ID}.lineStyle.dash`][0]) || 8,
+                            Number(data[`flags.${MODULE_ID}.lineStyle.dash`][1]) || 5
+                        ];
+                    } else {
+                        data[`flags.${MODULE_ID}.lineStyle.dash`] = null;
+                    }
+
+                    const processValue = name => {
+                        data[name] = saveValue(data[name]);
+                    };
+
+                    processValue(`flags.${MODULE_ID}.fillStyle.texture.width`);
+                    processValue(`flags.${MODULE_ID}.fillStyle.texture.height`);
+                    processValue(`flags.${MODULE_ID}.fillStyle.transform.position.x`);
+                    processValue(`flags.${MODULE_ID}.fillStyle.transform.position.y`);
+                    processValue(`flags.${MODULE_ID}.fillStyle.transform.pivot.x`);
+                    processValue(`flags.${MODULE_ID}.fillStyle.transform.pivot.y`);
+                    processValue(`flags.${MODULE_ID}.textStyle.wordWrapWidth`);
+
+                    const processStringArray = name => {
+                        if (data[name] == null) {
+                            data[name] = [];
+                        } else if (!Array.isArray(data[name])) {
+                            data[name] = [data[name]];
+                        }
+
+                        if (data[name].every(v => !v)) {
+                            data[name] = null;
+                        }
+                    };
+
+                    const processNumberArray = name => {
+                        if (data[name] == null) {
+                            data[name] = [];
+                        } else if (!Array.isArray(data[name])) {
+                            data[name] = [data[name]];
+                        }
+
+                        if (data[name].every(v => v === null)) {
+                            data[name] = null;
+                        }
+                    };
+
+                    processStringArray(`flags.${MODULE_ID}.textStyle.fill`);
+                    processNumberArray(`flags.${MODULE_ID}.textStyle.fillGradientStops`);
+
+                    return foundry.utils.flattenObject(cleanData(data, { deletionKeys: !this.options.configureDefault }));
+                }, libWrapper.WRAPPER);
+                
+                registeredMethod = methodName;
+                console.log(`${MODULE_ID}: Successfully registered ${methodName}`);
+                break;
+            } else {
+                console.log(`${MODULE_ID}: Method ${methodName} not found`);
+            }
+        } catch (error) {
+            console.warn(`${MODULE_ID}: Failed to register ${methodName}:`, error.message);
+            continue;
         }
-
-        const processValue = name => {
-            data[name] = saveValue(data[name]);
-        };
-
-        processValue(`flags.${MODULE_ID}.fillStyle.texture.width`);
-        processValue(`flags.${MODULE_ID}.fillStyle.texture.height`);
-        processValue(`flags.${MODULE_ID}.fillStyle.transform.position.x`);
-        processValue(`flags.${MODULE_ID}.fillStyle.transform.position.y`);
-        processValue(`flags.${MODULE_ID}.fillStyle.transform.pivot.x`);
-        processValue(`flags.${MODULE_ID}.fillStyle.transform.pivot.y`);
-        processValue(`flags.${MODULE_ID}.textStyle.wordWrapWidth`);
-
-        const processStringArray = name => {
-            if (data[name] == null) {
-                data[name] = [];
-            } else if (!Array.isArray(data[name])) {
-                data[name] = [data[name]];
-            }
-
-            if (data[name].every(v => !v)) {
-                data[name] = null;
-            }
-        };
-
-        const processNumberArray = name => {
-            if (data[name] == null) {
-                data[name] = [];
-            } else if (!Array.isArray(data[name])) {
-                data[name] = [data[name]];
-            }
-
-            if (data[name].every(v => v === null)) {
-                data[name] = null;
-            }
-        };
-
-        processStringArray(`flags.${MODULE_ID}.textStyle.fill`);
-        processNumberArray(`flags.${MODULE_ID}.textStyle.fillGradientStops`);
-
-        return foundry.utils.flattenObject(cleanData(data, { deletionKeys: !this.options.configureDefault }));
-    }, libWrapper.WRAPPER);
+    }
+    
+    if (!registeredMethod) {
+        console.warn(`${MODULE_ID}: Could not register any DrawingConfig data submission method. Module will work but some features may not function correctly.`);
+        // Don't throw an error, just log a warning
+    }
 });
 
 Hooks.on("renderDrawingConfig", (app, html) => {
@@ -63,7 +107,10 @@ Hooks.on("renderDrawingConfig", (app, html) => {
     const fs = document.getFlag(MODULE_ID, "fillStyle") ?? {};
     const ts = document.getFlag(MODULE_ID, "textStyle") ?? {};
 
-    html.find(`.tab[data-tab="position"]`).append(`
+    // Helper function to handle jQuery-like operations on vanilla DOM
+    const element = html.jquery ? html[0] : html;
+
+    element.querySelector(`.tab[data-tab="position"]`).insertAdjacentHTML('beforeend', `
         <div class="form-group">
             <label>Invisible</label>
             <div class="form-fields">
@@ -73,11 +120,12 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.find(`input[name="text"]`).replaceWith(`
+    const textInput = element.querySelector(`input[name="text"]`);
+    textInput.outerHTML = `
         <textarea name="text" style="font-family: var(--font-primary); min-height: calc(var(--form-field-height) + 3px); height: 0; border-color: var(--color-border-light-tertiary);">${document.text ?? ""}</textarea>
-    `);
+    `;
 
-    html.find(`input[name="strokeWidth"]`).closest(".form-group").after(`
+    element.querySelector(`input[name="strokeWidth"]`).closest(".form-group").insertAdjacentHTML('afterend', `
         <div class="form-group">
             <label>Dashed <span class="units">(Pixels)</span></label>
             <div class="form-fields">
@@ -91,7 +139,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.find(`div[data-tab="fill"]`).append(`
+    element.querySelector(`div[data-tab="fill"]`).insertAdjacentHTML('beforeend', `
         <div class="form-group">
             <label>Texture Size <span class="units">(Pixels or %)</span></label>
             <div class="form-fields">
@@ -143,7 +191,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.find(`select[name="fontFamily"]`).closest(".form-group").after(`
+    element.querySelector(`select[name="fontFamily"]`).closest(".form-group").insertAdjacentHTML('afterend', `
         <div class="form-group">
             <label>Font Style</label>
             <select name="flags.${MODULE_ID}.textStyle.fontStyle">
@@ -179,7 +227,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.find(`input[name="fontSize"]`).closest(".form-group").after(`
+    element.querySelector(`input[name="fontSize"]`).closest(".form-group").insertAdjacentHTML('afterend', `
         <div class="form-group">
             <label>Leading <span class="units">(Pixels)</span></label>
             <input type="number" name="flags.${MODULE_ID}.textStyle.leading" min="0" step="0.1" placeholder="0" value="${ts.leading ?? "0"}">
@@ -194,33 +242,45 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.find(`input[name="textColor"]`).closest(".form-fields").append(`
+    element.querySelector(`input[name="textColor"]`).closest(".form-fields").insertAdjacentHTML('beforeend', `
         &nbsp;
         <input type="number" name="flags.${MODULE_ID}.textStyle.fillGradientStops" min="0" max="1" step="0.001" placeholder="" title="Color Stop" value="${ts?.fillGradientStops?.[0] ?? ""}">
         &nbsp;
         <a title="Add Color" class="${MODULE_ID}--textStyle-fill--add" style="flex: 0;"><i class="fas fa-plus fa-fw" style="margin: 0;"></i></a>
         <a title="Remove Color" class="${MODULE_ID}--textStyle-fill--remove" style="flex: 0;"><i class="fas fa-minus fa-fw" style="margin: 0;"></i></a>
     `);
-    html.find(`a[class="${MODULE_ID}--textStyle-fill--add"]`).click(event => {
-        html.find(`input[name="textColor"]`).closest(".form-group").after(createTextColor(
-            html.find(`input[name="textColor"]`).val(),
-            html.find(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).eq(0).val()
+    
+    element.querySelector(`a[class="${MODULE_ID}--textStyle-fill--add"]`).addEventListener('click', event => {
+        const textColorInput = element.querySelector(`input[name="textColor"]`);
+        const gradientStopsInput = element.querySelectorAll(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`)[0];
+        textColorInput.closest(".form-group").insertAdjacentHTML('afterend', createTextColor(
+            textColorInput.value,
+            gradientStopsInput.value
         ));
         app.setPosition(app.position);
     });
-    html.find(`a[class="${MODULE_ID}--textStyle-fill--remove"]`).click(event => {
-        html.find(`input[name="textColor"],input[data-edit="textColor"]`).val(
-            html.find(`input[name="flags.${MODULE_ID}.textStyle.fill"]`).eq(0).val() || "#ffffff"
-        );
-        html.find(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).eq(0).val(
-            html.find(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).eq(1).val() ?? ""
-        );
-        html.find(`input[name="flags.${MODULE_ID}.textStyle.fill"]`).eq(0).closest(".form-group").remove();
+    
+    element.querySelector(`a[class="${MODULE_ID}--textStyle-fill--remove"]`).addEventListener('click', event => {
+        const textColorInputs = element.querySelectorAll(`input[name="textColor"],input[data-edit="textColor"]`);
+        const fillInputs = element.querySelectorAll(`input[name="flags.${MODULE_ID}.textStyle.fill"]`);
+        const gradientStopsInputs = element.querySelectorAll(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`);
+        
+        textColorInputs.forEach(input => {
+            input.value = fillInputs[0]?.value || "#ffffff";
+        });
+        
+        if (gradientStopsInputs[0]) {
+            gradientStopsInputs[0].value = gradientStopsInputs[1]?.value ?? "";
+        }
+        
+        if (fillInputs[0]) {
+            fillInputs[0].closest(".form-group").remove();
+        }
         app.setPosition(app.position);
     });
 
     const createTextColor = (fill, stop) => {
-        const group = $(`
+        const groupHtml = `
             <div class="form-group">
                 <label></label>
                 <div class="form-fields">
@@ -233,37 +293,51 @@ Hooks.on("renderDrawingConfig", (app, html) => {
                     <a title="Remove Color" style="flex: 0;"><i class="fas fa-minus fa-fw" style="margin: 0;"></i></a>
                 </div>
             </div>
-        `);
+        `;
 
-        group.find(`input[type="color"]`).change(event => {
-            group.find(`input[class="color"]`).val(event.target.value)
+        // Create a temporary container to parse the HTML
+        const temp = document.createElement('div');
+        temp.innerHTML = groupHtml;
+        const group = temp.firstElementChild;
+
+        const colorInput = group.querySelector(`input[type="color"]`);
+        const textInput = group.querySelector(`input[class="color"]`);
+        
+        colorInput.addEventListener('change', event => {
+            textInput.value = event.target.value;
         });
-        group.find(`a`).eq(0).click(event => {
-            $(event.target).closest(".form-group").after(createTextColor(
-                group.find(`input[class="color"]`).val(),
-                group.find(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).val()
+        
+        const addButton = group.querySelectorAll('a')[0];
+        const removeButton = group.querySelectorAll('a')[1];
+        
+        addButton.addEventListener('click', event => {
+            const gradientStopsInput = group.querySelector(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`);
+            event.target.closest(".form-group").insertAdjacentHTML('afterend', createTextColor(
+                textInput.value,
+                gradientStopsInput.value
             ));
             app.setPosition(app.position);
         });
-        group.find(`a`).eq(1).click(event => {
-            $(event.target).closest(".form-group").remove();
+        
+        removeButton.addEventListener('click', event => {
+            event.target.closest(".form-group").remove();
             app.setPosition(app.position);
         });
 
-        return group;
+        return group.outerHTML;
     }
 
     if (ts.fill) {
         const fill = Array.isArray(ts.fill) ? ts.fill : [ts.fill];
 
         for (let i = fill.length - 1; i >= 0; i--) {
-            html.find(`input[name="textColor"]`).closest(".form-group").after(
+            element.querySelector(`input[name="textColor"]`).closest(".form-group").insertAdjacentHTML('afterend',
                 createTextColor(fill[i], ts?.fillGradientStops?.[i + 1])
             );
         }
     }
 
-    html.find(`input[name="textAlpha"]`).closest(".form-group").before(`
+    element.querySelector(`input[name="textAlpha"]`).closest(".form-group").insertAdjacentHTML('beforebegin', `
         <div class="form-group">
             <label>Text Color Gradient</label>
             <select name="flags.${MODULE_ID}.textStyle.fillGradientType" data-dtype="Number">
@@ -273,7 +347,7 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         </div>
     `);
 
-    html.find(`input[name="textAlpha"]`).closest(".form-group").after(`
+    element.querySelector(`input[name="textAlpha"]`).closest(".form-group").insertAdjacentHTML('afterend', `
         <div class="form-group">
             <label>Text Alignment</label>
             <select name="flags.${MODULE_ID}.textStyle.align">
@@ -334,46 +408,63 @@ Hooks.on("renderDrawingConfig", (app, html) => {
         let textColor;
 
         if (event?.target.type === "color") {
-            textColor = html.find(`input[data-edit="textColor"]`).val();
+            textColor = element.querySelector(`input[data-edit="textColor"]`).value;
         } else {
-            textColor = html.find(`input[name="textColor"]`).val();
+            textColor = element.querySelector(`input[name="textColor"]`).value;
         }
 
         const strokeColor = Color.from(textColor || "#ffffff").hsv[2] > 0.6 ? "#000000" : "#ffffff";
 
-        html.find(`input[name="flags.advanced-drawing-tools.textStyle.stroke"]`).attr("placeholder", strokeColor);
-        html.find(`input[data-edit="flags.advanced-drawing-tools.textStyle.stroke"]`).val(strokeColor);
+        const strokeInput = element.querySelector(`input[name="flags.advanced-drawing-tools.textStyle.stroke"]`);
+        const strokeEditInput = element.querySelector(`input[data-edit="flags.advanced-drawing-tools.textStyle.stroke"]`);
+        
+        if (strokeInput) strokeInput.setAttribute("placeholder", strokeColor);
+        if (strokeEditInput) strokeEditInput.value = strokeColor;
     };
 
     updateStrokeColorPlaceholder();
 
-    html.find(`input[name="textColor"],input[data-edit="textColor"]`).change(event => updateStrokeColorPlaceholder(event));
+    const textColorInputs = element.querySelectorAll(`input[name="textColor"],input[data-edit="textColor"]`);
+    textColorInputs.forEach(input => {
+        input.addEventListener('change', event => updateStrokeColorPlaceholder(event));
+    });
 
     const updateStrokeThicknessPlaceholder = () => {
-        const fontSize = html.find(`input[name="fontSize"]`).val();
+        const fontSize = element.querySelector(`input[name="fontSize"]`).value;
+        const strokeThicknessInput = element.querySelector(`input[name="flags.advanced-drawing-tools.textStyle.strokeThickness"]`);
 
-        html.find(`input[name="flags.advanced-drawing-tools.textStyle.strokeThickness"]`).attr(
-            "placeholder",
-            Math.max(Math.round(fontSize / 32), 2)
-        );
+        if (strokeThicknessInput) {
+            strokeThicknessInput.setAttribute(
+                "placeholder",
+                Math.max(Math.round(fontSize / 32), 2)
+            );
+        }
     };
 
     updateStrokeThicknessPlaceholder();
 
-    html.find(`input[name="fontSize"]`).change(event => updateStrokeThicknessPlaceholder(event));
+    const fontSizeInput = element.querySelector(`input[name="fontSize"]`);
+    if (fontSizeInput) {
+        fontSizeInput.addEventListener('change', event => updateStrokeThicknessPlaceholder(event));
+    }
 
     const updateDropShadowBlurPlaceholder = () => {
-        const fontSize = html.find(`input[name="fontSize"]`).val();
+        const fontSize = element.querySelector(`input[name="fontSize"]`).value;
+        const dropShadowBlurInput = element.querySelector(`input[name="flags.advanced-drawing-tools.textStyle.dropShadowBlur"]`);
 
-        html.find(`input[name="flags.advanced-drawing-tools.textStyle.dropShadowBlur"]`).attr(
-            "placeholder",
-            Math.max(Math.round(fontSize / 16), 2)
-        );
+        if (dropShadowBlurInput) {
+            dropShadowBlurInput.setAttribute(
+                "placeholder",
+                Math.max(Math.round(fontSize / 16), 2)
+            );
+        }
     };
 
     updateDropShadowBlurPlaceholder();
 
-    html.find(`input[name="fontSize"]`).change(event => updateDropShadowBlurPlaceholder(event));
+    if (fontSizeInput) {
+        fontSizeInput.addEventListener('change', event => updateDropShadowBlurPlaceholder(event));
+    }
 
     app.options.height = "auto";
     app.position.height = "auto";

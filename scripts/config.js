@@ -1,6 +1,25 @@
 import { MODULE_ID } from "./const.js";
 import { cleanData, saveValue, stringifyValue } from "./utils.js";
 
+// V13 Fix: Make DrawingConfig resizable by modifying its DEFAULT_OPTIONS
+Hooks.once("ready", (app) => {
+    try {
+        const DrawingConfigClass = foundry.applications.sheets.DrawingConfig;
+        
+        if (DrawingConfigClass && DrawingConfigClass.DEFAULT_OPTIONS) {
+            // Modify the default options to make the window resizable
+            DrawingConfigClass.DEFAULT_OPTIONS.window.resizable = true;
+            console.log(`${MODULE_ID}: Modified DrawingConfig DEFAULT_OPTIONS to enable resizing`);
+        } else {
+            console.warn(`${MODULE_ID}: Could not access DrawingConfig DEFAULT_OPTIONS`);
+        }
+    } catch (error) {
+        console.error(`${MODULE_ID}: Error modifying DrawingConfig options:`, error);
+    }
+
+
+});
+
 Hooks.once("libWrapper.Ready", () => {
     console.log('foundry.applications.sheets.DrawingConfig.prototype', foundry.applications.sheets.DrawingConfig.prototype);
     libWrapper.register(MODULE_ID, "foundry.applications.sheets.DrawingConfig.prototype._processSubmitData", async function (wrapped, event, form, submitData, options) {
@@ -210,17 +229,17 @@ Hooks.on("renderDrawingConfig", (app, html) => {
     `);
     html.querySelector(`a[class="${MODULE_ID}--textStyle-fill--add"]`).click(event => {
         html.querySelector(`color-picker[name="textColor"]`).closest(".form-group").after(createTextColor(
-            html.querySelector(`color-picker[name="textColor"]`).val(),
-            html.querySelector(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).eq(0).val()
+            html.querySelector(`color-picker[name="textColor"]`).value,
+            html.querySelector(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).eq(0).value
         ));
         app.setPosition(app.position);
     });
     html.querySelector(`a[class="${MODULE_ID}--textStyle-fill--remove"]`).click(event => {
-        html.querySelector(`color-picker[name="textColor"],input[data-edit="textColor"]`).val(
-            html.querySelector(`input[name="flags.${MODULE_ID}.textStyle.fill"]`).eq(0).val() || "#ffffff"
+        html.querySelector(`color-picker[name="textColor"],input[data-edit="textColor"]`).value = (
+            html.querySelector(`input[name="flags.${MODULE_ID}.textStyle.fill"]`).eq(0).value || "#ffffff"
         );
-        html.querySelector(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).eq(0).val(
-            html.querySelector(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).eq(1).val() ?? ""
+        html.querySelector(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).eq(0).value = (
+            html.querySelector(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).eq(1).value ?? ""
         );
         html.querySelector(`input[name="flags.${MODULE_ID}.textStyle.fill"]`).eq(0).closest(".form-group").remove();
         app.setPosition(app.position);
@@ -242,13 +261,13 @@ Hooks.on("renderDrawingConfig", (app, html) => {
             </div>
         `);
 
-        group.find(`input[type="color"]`).change(event => {
-            group.find(`input[class="color"]`).val(event.target.value)
+        group.find(`input[type="color"]`).addEventListener("change", event => {
+            group.find(`input[class="color"]`).value = (event.target.value)
         });
         group.find(`a`).eq(0).click(event => {
             $(event.target).closest(".form-group").after(createTextColor(
-                group.find(`input[class="color"]`).val(),
-                group.find(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).val()
+                group.find(`input[class="color"]`).value,
+                group.find(`input[name="flags.${MODULE_ID}.textStyle.fillGradientStops"]`).value
             ));
             app.setPosition(app.position);
         });
@@ -259,7 +278,6 @@ Hooks.on("renderDrawingConfig", (app, html) => {
 
         return group;
     }
-
     if (ts.fill) {
         const fill = Array.isArray(ts.fill) ? ts.fill : [ts.fill];
 
@@ -339,27 +357,27 @@ Hooks.on("renderDrawingConfig", (app, html) => {
 
     const updateStrokeColorPlaceholder = (event) => {
         let textColor;
-
+        console.log('updateStrokeColorPlaceholder event', event)
         if (event?.target.type === "color") {
-            textColor = html.querySelector(`input[data-edit="textColor"]`).val();
+            textColor = html.querySelector(`input[data-edit="textColor"]`).value;
         } else {
-            textColor = html.querySelector(`color-picker[name="textColor"]`).val();
+            textColor = html.querySelector(`color-picker[name="textColor"]`).value;
         }
 
         const strokeColor = Color.from(textColor || "#ffffff").hsv[2] > 0.6 ? "#000000" : "#ffffff";
 
-        html.querySelector(`input[name="flags.advanced-drawing-tools.textStyle.stroke"]`).attr("placeholder", strokeColor);
-        html.querySelector(`input[data-edit="flags.advanced-drawing-tools.textStyle.stroke"]`).val(strokeColor);
+        html.querySelector(`input[name="flags.advanced-drawing-tools.textStyle.stroke"]`).setAttribute("placeholder", strokeColor);
+        html.querySelector(`input[data-edit="flags.advanced-drawing-tools.textStyle.stroke"]`).value = (strokeColor);
     };
 
     updateStrokeColorPlaceholder();
 
-    html.querySelector(`color-picker[name="textColor"],input[data-edit="textColor"]`).change(event => updateStrokeColorPlaceholder(event));
+    html.querySelector(`color-picker[name="textColor"],input[data-edit="textColor"]`).addEventListener("change", event => updateStrokeColorPlaceholder(event));
 
     const updateStrokeThicknessPlaceholder = () => {
-        const fontSize = html.querySelector(`range-picker[name="fontSize"]`).val();
+        const fontSize = html.querySelector(`range-picker[name="fontSize"]`).value;
 
-        html.querySelector(`input[name="flags.advanced-drawing-tools.textStyle.strokeThickness"]`).attr(
+        html.querySelector(`input[name="flags.advanced-drawing-tools.textStyle.strokeThickness"]`).setAttribute(
             "placeholder",
             Math.max(Math.round(fontSize / 32), 2)
         );
@@ -367,12 +385,12 @@ Hooks.on("renderDrawingConfig", (app, html) => {
 
     updateStrokeThicknessPlaceholder();
 
-    html.querySelector(`range-picker[name="fontSize"]`).change(event => updateStrokeThicknessPlaceholder(event));
+    html.querySelector(`range-picker[name="fontSize"]`).addEventListener("change", event => updateStrokeThicknessPlaceholder(event));
 
     const updateDropShadowBlurPlaceholder = () => {
-        const fontSize = html.querySelector(`range-picker[name="fontSize"]`).val();
+        const fontSize = html.querySelector(`range-picker[name="fontSize"]`).value;
 
-        html.querySelector(`input[name="flags.advanced-drawing-tools.textStyle.dropShadowBlur"]`).attr(
+        html.querySelector(`input[name="flags.advanced-drawing-tools.textStyle.dropShadowBlur"]`).setAttribute(
             "placeholder",
             Math.max(Math.round(fontSize / 16), 2)
         );
@@ -380,9 +398,13 @@ Hooks.on("renderDrawingConfig", (app, html) => {
 
     updateDropShadowBlurPlaceholder();
 
-    html.querySelector(`range-picker[name="fontSize"]`).change(event => updateDropShadowBlurPlaceholder(event));
+    html.querySelector(`range-picker[name="fontSize"]`).addEventListener("change", event => updateDropShadowBlurPlaceholder(event));
 
     app.options.height = "auto";
     app.position.height = "auto";
     app.setPosition(app.position);
+
+
+
+
 });
